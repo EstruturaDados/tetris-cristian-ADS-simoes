@@ -11,13 +11,11 @@ typedef struct {
     int id;
 } Peca;
 
-// Estrutura da Fila Circular (Peças Futuras)
 typedef struct {
     Peca itens[TAM_FILA];
     int frente, final, total;
 } FilaCircular;
 
-// Estrutura da Pilha Linear (Reserva)
 typedef struct {
     Peca itens[TAM_PILHA];
     int topo;
@@ -25,6 +23,7 @@ typedef struct {
 
 int contadorId = 0;
 
+// Funções Auxiliares
 Peca gerarPeca() {
     char tipos[] = {'I', 'O', 'T', 'L'};
     Peca p;
@@ -33,7 +32,6 @@ Peca gerarPeca() {
     return p;
 }
 
-// Funções da Fila
 void inicializarFila(FilaCircular *f) {
     f->frente = 0; f->final = -1; f->total = 0;
     for (int i = 0; i < TAM_FILA; i++) {
@@ -49,51 +47,47 @@ void exibirEstado(FilaCircular f, PilhaReserva p) {
         int idx = (f.frente + i) % TAM_FILA;
         printf("[%c %d] ", f.itens[idx].nome, f.itens[idx].id);
     }
-    
-    printf("\n\n--- 🎒 PILHA (RESERVA) ---\n");
-    if (p.topo == -1) printf("(Vazia)");
+    printf("\n--- 🎒 PILHA (RESERVA) ---\n");
+    if (p.topo == -1) printf("(Vazia)\n");
     for (int i = p.topo; i >= 0; i--) {
         printf("[%c %d]\n", p.itens[i].nome, p.itens[i].id);
     }
     printf("--------------------------\n");
 }
 
-// Lógica de Jogo
-void jogarFila(FilaCircular *f) {
-    Peca p = f->itens[f->frente];
-    printf("\n🕹️ JOGOU: [%c %d]\n", p.nome, p.id);
-    f->frente = (f->frente + 1) % TAM_FILA;
-    f->itens[(f->final + 1) % TAM_FILA] = gerarPeca(); // Mantém a fila cheia
-    f->final = (f->final + 1) % TAM_FILA;
-}
+// OPERAÇÕES MESTRE
 
-void reservarPeca(FilaCircular *f, PilhaReserva *p) {
-    if (p->topo >= TAM_PILHA - 1) {
-        printf("\n⚠️ Reserva cheia!\n");
+// Troca o topo da pilha com a frente da fila
+void trocarPeca(FilaCircular *f, PilhaReserva *p) {
+    if (p->topo == -1 || f->total == 0) {
+        printf("\n⚠️ Operacao impossivel: estruturas vazias!\n");
         return;
     }
-    // Tira da fila
-    Peca paraReserva = f->itens[f->frente];
-    f->frente = (f->frente + 1) % TAM_FILA;
-    
-    // Coloca na pilha (Push)
-    p->topo++;
-    p->itens[p->topo] = paraReserva;
-    
-    // Repõe a fila
-    f->final = (f->final + 1) % TAM_FILA;
-    f->itens[f->final] = gerarPeca();
-    printf("\n📥 Peca [%c %d] movida para reserva.\n", paraReserva.nome, paraReserva.id);
+    Peca temp = f->itens[f->frente];
+    f->itens[f->frente] = p->itens[p->topo];
+    p->itens[p->topo] = temp;
+    printf("\n🔄 TROCA REALIZADA: Fila e Pilha sincronizadas!\n");
 }
 
-void usarReserva(PilhaReserva *p) {
-    if (p->topo == -1) {
-        printf("\n⚠️ Nao ha pecas na reserva!\n");
-        return;
+// Inverte a Fila usando a Pilha como auxílio
+void inverterFila(FilaCircular *f) {
+    if (f->total == 0) return;
+    
+    Peca temp[TAM_FILA];
+    int n = f->total;
+    
+    // Transfere para um array temporário de forma reversa
+    for (int i = 0; i < n; i++) {
+        int idx = (f->frente + (n - 1 - i)) % TAM_FILA;
+        temp[i] = f->itens[idx];
     }
-    Peca tirada = p->itens[p->topo];
-    p->topo--; // Pop
-    printf("\n📤 USOU DA RESERVA: [%c %d]\n", tirada.nome, tirada.id);
+    
+    // Devolve para a fila na nova ordem
+    for (int i = 0; i < n; i++) {
+        int idx = (f->frente + i) % TAM_FILA;
+        f->itens[idx] = temp[i];
+    }
+    printf("\n🔃 FILA INVERTIDA! Estratégia alterada.\n");
 }
 
 int main() {
@@ -107,13 +101,31 @@ int main() {
 
     do {
         exibirEstado(fila, pilha);
-        printf("\n1 - Jogar peca\n2 - Reservar peca (Push)\n3 - Usar reserva (Pop)\n0 - Sair\nEscolha: ");
+        printf("\n1 - Jogar peca\n2 - Reservar peca (Push)\n3 - Usar reserva (Pop)");
+        printf("\n4 - Trocar Topo com Frente\n5 - Inverter Fila\n0 - Sair\nEscolha: ");
         scanf("%d", &opcao);
 
         switch (opcao) {
-            case 1: jogarFila(&fila); break;
-            case 2: reservarPeca(&fila, &pilha); break;
-            case 3: usarReserva(&pilha); break;
+            case 1: 
+                printf("\n🕹️ JOGOU: [%c %d]\n", fila.itens[fila.frente].nome, fila.itens[fila.frente].id);
+                fila.frente = (fila.frente + 1) % TAM_FILA;
+                fila.final = (fila.final + 1) % TAM_FILA;
+                fila.itens[fila.final] = gerarPeca();
+                break;
+            case 2:
+                if (pilha.topo < TAM_PILHA - 1) {
+                    pilha.itens[++pilha.topo] = fila.itens[fila.frente];
+                    fila.frente = (fila.frente + 1) % TAM_FILA;
+                    fila.final = (fila.final + 1) % TAM_FILA;
+                    fila.itens[fila.final] = gerarPeca();
+                } else printf("\n⚠️ Pilha cheia!\n");
+                break;
+            case 3:
+                if (pilha.topo != -1) printf("\n📤 USOU RESERVA: [%c %d]\n", pilha.itens[pilha.topo--].nome, pilha.itens[pilha.topo + 1].id);
+                else printf("\n⚠️ Reserva vazia!\n");
+                break;
+            case 4: trocarPeca(&fila, &pilha); break;
+            case 5: inverterFila(&fila); break;
         }
     } while (opcao != 0);
 
